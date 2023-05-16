@@ -1,0 +1,7 @@
+Include/
+Scripts/
+Lib/
+pyvenv.cfg
+*.py[cod]
+apikey.txt
+*.sqlite3
