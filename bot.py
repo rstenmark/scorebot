@@ -35,7 +35,7 @@ def get_score_by_id(user_id: int, guild_id: int) -> int:
 def create_id(user_id: int, guild_id: int, score: int=0) -> Any:
     '''Creates a column with provided username and score (O by default).'''
     con, cur = open_db()
-    query = f"""INSERT INTO statistics(user_id, guild_id, score) values ({user_id}, {guild_id}, 0)"""
+    query = f"""INSERT INTO statistics(user_id, guild_id, score) values ({user_id}, {guild_id}, {score})"""
     ret = cur.execute(query).fetchall()
     con.commit()
     con.close()
