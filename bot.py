@@ -105,7 +105,7 @@ class MyClient(discord.Client):
             else:
                 await msg.channel.send(get_high_score_by_guild(self, msg.guild.id))
 
-    async def get_channel_messages(self, channel_name, limit=10):
+    async def get_channel_messages(self, channel_name, limit=100):
         for c in self.get_all_channels():
             if c.name == channel_name:
                 messages = [msg async for msg in c.history()]
@@ -113,8 +113,8 @@ class MyClient(discord.Client):
 
     async def _handle_reaction(self, payload: discord.RawReactionActionEvent):
         '''Determines what to do with a given Discord reaction'''
-        
         # Get reacted message
+        reaction = self.get_emoji(payload.emoji.name)
         channel = self.get_channel(payload.channel_id)
         msg = await channel.fetch_message(payload.message_id)
         #print(f"guild: {guild}\nchannel: {channel}\nmsg: {msg}\nreactor_id: {reactor_id}")
@@ -124,9 +124,15 @@ class MyClient(discord.Client):
             print(f"{msg.author.name}'s score was {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
             match payload.event_type:
                 case 'REACTION_ADD':
-                    increment_score_by_id(msg.author.id, msg.guild.id)
+                    if reaction == 'chilling':
+                        increment_score_by_id(msg.author.id, msg.guild.id)
+                    if reaction == 'minusChilling':
+                        decrement_score_by_id(msg.author.id, msg.guild.id)
                 case 'REACTION_REMOVE':
-                    decrement_score_by_id(msg.author.id, msg.guild.id)
+                    if reaction == 'minusChilling':
+                        increment_score_by_id(msg.author.id, msg.guild.id)
+                    if reaction == 'chilling':
+                        decrement_score_by_id(msg.author.id, msg.guild.id)
                 case _:
                     pass
             print(f"{msg.author.name}'s score now {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
