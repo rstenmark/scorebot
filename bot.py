@@ -114,7 +114,7 @@ class MyClient(discord.Client):
     async def _handle_reaction(self, payload: discord.RawReactionActionEvent):
         '''Determines what to do with a given Discord reaction'''
         # Get reacted message
-        reaction = self.get_emoji(payload.emoji.name)
+        emoji = payload.emoji.name
         channel = self.get_channel(payload.channel_id)
         msg = await channel.fetch_message(payload.message_id)
         #print(f"guild: {guild}\nchannel: {channel}\nmsg: {msg}\nreactor_id: {reactor_id}")
@@ -124,14 +124,14 @@ class MyClient(discord.Client):
             print(f"{msg.author.name}'s score was {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
             match payload.event_type:
                 case 'REACTION_ADD':
-                    if reaction == 'chilling':
+                    if emoji == 'chilling':
                         increment_score_by_id(msg.author.id, msg.guild.id)
-                    if reaction == 'minusChilling':
+                    if emoji == 'minusChilling':
                         decrement_score_by_id(msg.author.id, msg.guild.id)
                 case 'REACTION_REMOVE':
-                    if reaction == 'minusChilling':
+                    if emoji == 'minusChilling':
                         increment_score_by_id(msg.author.id, msg.guild.id)
-                    if reaction == 'chilling':
+                    if emoji == 'chilling':
                         decrement_score_by_id(msg.author.id, msg.guild.id)
                 case _:
                     pass
