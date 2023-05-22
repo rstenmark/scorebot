@@ -68,7 +68,7 @@ class MyClient(discord.Client):
                 sums[message[0]] = message[1]
 
         for author_id, score in sums.items():
-            cur.execute(f"""INSERT INTO statistics VALUES ({author_id}, {guild_id}, {score})""")
+            cur.execute(f"""INSERT OR REPLACE INTO statistics VALUES ({author_id}, {guild_id}, {score})""")
 
         con.commit()
         con.close()
