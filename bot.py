@@ -33,7 +33,7 @@ class MyClient(discord.Client):
                 # Get last 100 messages in channel (async)
                 for message in [msg async for msg in channel.history()]:
                     # Select messages matching this message id
-                    query = f"""SELECT score FROM messages WHERE message_id = {message.id}"""
+                    query = f"""SELECT score FROM messages WHERE message_id = {message.id} and guild_id = {guild_id}"""
                     ret = cur.execute(query).fetchall()
                     if not is_empty(ret):
                         # One match, duplicate message (message_id is required to be unique)
@@ -51,21 +51,24 @@ class MyClient(discord.Client):
                     else:
                         # Zero matches, new message
                         remote_sum = self.get_message_score(message)
-                        query = f"""INSERT INTO messages VALUES ({message.id}, {message.author.id}, {remote_sum})"""
+                        query = f"""INSERT INTO messages VALUES ({message.id}, {guild_id}, {message.author.id}, {remote_sum})"""
                         cur.execute(query)
 
-        # Get all recorded messages
+        # Commit changes at this point
+        con.commit()
+
+        # Get all recorded messages from this guild
         sums = dict()
-        messages = cur.execute(f"""SELECT author_id, score FROM messages""").fetchall()
-        print(messages)
+        messages = cur.execute(f"""SELECT author_id, score FROM messages WHERE guild_id = {guild_id}""").fetchall()
         for message in messages:
+            print(message)
             try:
                 sums[message[0]] += message[1]
             except KeyError:
                 sums[message[0]] = message[1]
 
         for author_id, score in sums.items():
-            cur.execute(f"""INSERT INTO statistics VALUES ({author_id}, {score})""")
+            cur.execute(f"""INSERT INTO statistics VALUES ({author_id}, {guild_id}, {score})""")
 
         con.commit()
         con.close()

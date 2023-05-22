@@ -3,8 +3,8 @@ import discord.client
 from typing import Any
 def _setup():
     con, cur = open_db()
-    cur.execute(f"""CREATE TABLE statistics (user_id INTEGER PRIMARY KEY ASC, score INTEGER)""")
-    cur.execute(f"""CREATE TABLE messages (message_id INTEGER PRIMARY KEY ASC, author_id INTEGER, score INTEGER)""")
+    cur.execute(f"""CREATE TABLE statistics (user_id INTEGER PRIMARY KEY ASC, guild_id INTEGER, score INTEGER)""")
+    cur.execute(f"""CREATE TABLE messages (message_id INTEGER PRIMARY KEY ASC, guild_id INTEGER, author_id INTEGER, score INTEGER)""")
     con.commit()
     con.close()
 
