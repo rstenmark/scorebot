@@ -1,96 +1,9 @@
 import discord, paths, sqlite3
+from db import *
 from typing import Any
 
-def open_db():
-    '''Returns open sqlite3 Connection and Cursor objects by unpacking
-    them from the optional ConCur argument or by instantiating new objects'''
-    con = sqlite3.connect(paths.database)
-    cur = con.cursor()
-    return con, cur
-
-def get_id_exists(user_id: int, guild_id: int) -> bool:
-    '''Returns True if user exists otherwise False'''
-    con, cur = open_db()
-    query = f"""SELECT user_id FROM statistics WHERE user_id = {user_id} and guild_id = {guild_id}"""
-    ret = cur.execute(query).fetchall()
-    con.commit()
-    con.close()
-    if len(ret) == 0:
-        return False
-    else:
-        return True
-
-def get_score_by_id(user_id: int, guild_id: int) -> int:
-    '''Returns number of score by username'''
-    con, cur = open_db()
-    if get_id_exists(user_id, guild_id):
-        query = f"""SELECT score FROM statistics WHERE user_id = {user_id} AND guild_id = {guild_id}"""
-        ret = cur.execute(query).fetchall()
-        con.commit()
-        con.close()
-        return ret[0][0]
-    else:
-        return 0
-
-def create_id(user_id: int, guild_id: int, score: int=0) -> Any:
-    '''Creates a column with provided username and score (O by default).'''
-    con, cur = open_db()
-    query = f"""INSERT INTO statistics(user_id, guild_id, score) values ({user_id}, {guild_id}, {score})"""
-    ret = cur.execute(query).fetchall()
-    con.commit()
-    con.close()
-    return ret
-
-def update_score_by_id(user_id: int, guild_id: int, score: int) -> Any:
-    '''Updates a user's score'''
-    con, cur = open_db()
-    # New user
-    if not get_id_exists(user_id, guild_id):
-        ret = create_id(user_id, guild_id, score)
-    else:
-        # Update new score value for user
-        print(f"Setting {user_id}'s score to {score}")
-        query = f"""UPDATE statistics SET score = {score} WHERE user_id = {user_id} AND guild_id = {guild_id}"""
-        ret = cur.execute(query).fetchall()
-    con.commit()
-    con.close()
-    return ret
-
-def increment_score_by_id(user_id: int, guild_id: int):
-    '''Increments a user's score by 1'''
-    update_score_by_id(
-        user_id=user_id,
-        guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) + 1
-    )
-
-def decrement_score_by_id(user_id: int, guild_id: int):
-    '''Decrements a user's score by 1'''
-    update_score_by_id(
-        user_id=user_id,
-        guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) - 1
-    )
-
-def get_high_score_by_guild(client: discord.Client, guild_id, limit=10):
-    con, cur = open_db()
-    query = f"""SELECT user_id, score FROM statistics WHERE guild_id = {guild_id} ORDER BY score"""
-    result = cur.execute(query).fetchmany(limit)
-    con.commit()
-    con.close()
-    ret = "**Heavenly and Auspicious social credit leaderboard**```"
-    print(result)
-    if len(result) == 0:
-        ret += "Nobody is credible here 。 A black cloud plumes above your home 。"
-    else:
-        for tuple in result:
-            user = client.get_user(tuple[0])
-            if not isinstance(user, type(None)):
-                ret += f"{user.display_name}: {tuple[1]} points\n"
-            else:
-                ret += f"Unknown: {tuple[1]} points\n"
-    ret += "```狗屎是神聖的 。"
-    return ret
+EMOJI_CHILLING = "chilling"
+EMOJI_MINUSCHILLING = "minusChilling"
 
 class MyClient(discord.Client):
     '''SocialCreditBot'''
@@ -104,12 +17,55 @@ class MyClient(discord.Client):
                 await msg.channel.send("```Usage: !credit```")
             else:
                 await msg.channel.send(get_high_score_by_guild(self, msg.guild.id))
+        elif msg.content.startswith('!sync'):
+            s = msg.content.split(" ")
+            if len(s) != 1:
+                await msg.channel.send("```Usage: !sync```")
+            else:
+                await self.sync_score(msg.guild.id)
 
-    async def get_channel_messages(self, channel_name, limit=100):
-        for c in self.get_all_channels():
-            if c.name == channel_name:
-                messages = [msg async for msg in c.history()]
-        return messages
+    async def sync_score(self, guild_id: int):
+        con, cur = open_db()
+        # Get all channel categories in target guild
+        for category in self.get_guild(guild_id).categories:
+            # Get all text channels in category
+            for channel in category.text_channels:
+                # Get last 100 messages in channel (async)
+                for message in [msg async for msg in channel.history()]:
+                    # Select messages matching this message id
+                    query = f"""SELECT score FROM messages WHERE message_id = {message.id}"""
+                    ret = cur.execute(query).fetchall()
+                    if not is_empty(ret):
+                        # One match, duplicate message (message_id is required to be unique)
+
+                        # This is the score in local record
+                        recorded_sum = ret[0][0]
+
+                        # This is the score in remote record
+                        remote_sum = self.get_message_score(message)
+                        if recorded_sum != remote_sum:
+                            # Local record differs from remote record, update table
+                            query = f"""UPDATE messages SET score = {remote_sum} WHERE message_id = {message.id}"""
+                            print(query)
+                            cur.execute(query)
+
+                    else:
+                        # Zero matches, new message
+                        remote_sum = self.get_message_score(message)
+                        query = f"""INSERT INTO messages VALUES ({message.id}, {message.author.id}, {remote_sum})"""
+                        cur.execute(query)
+
+        con.commit()
+        con.close()
+
+    def get_message_score(self, message: discord.Message) -> int:
+        sum = 0
+        for reaction in message.reactions:
+            if reaction.emoji.name == EMOJI_CHILLING:
+                sum += reaction.count
+            elif reaction.emoji.name == EMOJI_MINUSCHILLING:
+                sum -= reaction.count
+        return sum
 
     async def _handle_reaction(self, payload: discord.RawReactionActionEvent):
         '''Determines what to do with a given Discord reaction'''
@@ -121,21 +77,21 @@ class MyClient(discord.Client):
 
         # No score modifications when self reacting
         if payload.user_id != msg.author.id:
-            print(f"{msg.author.name}'s score was {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
+            print(f"{msg.author.display_name}'s score was {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
             match payload.event_type:
                 case 'REACTION_ADD':
-                    if emoji == 'chilling':
+                    if emoji == EMOJI_CHILLING:
                         increment_score_by_id(msg.author.id, msg.guild.id)
-                    if emoji == 'minusChilling':
+                    elif emoji == EMOJI_MINUSCHILLING:
                         decrement_score_by_id(msg.author.id, msg.guild.id)
                 case 'REACTION_REMOVE':
-                    if emoji == 'minusChilling':
+                    if emoji == EMOJI_MINUSCHILLING:
                         increment_score_by_id(msg.author.id, msg.guild.id)
-                    if emoji == 'chilling':
+                    elif emoji == EMOJI_CHILLING:
                         decrement_score_by_id(msg.author.id, msg.guild.id)
                 case _:
                     pass
-            print(f"{msg.author.name}'s score now {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
+            print(f"{msg.author.display_name}'s score now {get_score_by_id(msg.author.id, msg.guild.id)} in guild {msg.guild.id}")
 
     async def on_raw_reaction_add(
         self,
