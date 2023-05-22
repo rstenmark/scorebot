@@ -24,11 +24,11 @@ def is_empty(l: list):
 def get_id_exists(user_id: int, guild_id: int) -> bool:
     '''Returns True if user exists otherwise False'''
     con, cur = open_db()
-    query = f"""SELECT user_id FROM statistics WHERE user_id = {user_id} and guild_id = {guild_id}"""
+    query = f"""SELECT * FROM statistics WHERE user_id = {user_id} AND guild_id = {guild_id}"""
     ret = cur.execute(query).fetchall()
     con.commit()
     con.close()
-    return is_empty(ret)
+    return not is_empty(ret)
 
 def get_score_by_id(user_id: int, guild_id: int) -> int:
     '''Returns number of score by username'''
@@ -56,6 +56,7 @@ def update_score_by_id(user_id: int, guild_id: int, score: int) -> Any:
     con, cur = open_db()
     # New user
     if not get_id_exists(user_id, guild_id):
+        print(f"Creating ID {user_id}, {guild_id}")
         ret = create_id(user_id, guild_id, score)
     else:
         # Update new score value for user
@@ -89,7 +90,6 @@ def get_high_score_by_guild(client: discord.client.Client, guild_id, limit=10):
     con.commit()
     con.close()
     ret = "**Heavenly and Auspicious social credit leaderboard**```"
-    print(result)
     if is_empty(result):
         ret += "Nobody is credible here 。 A black cloud plumes above your home 。"
     else:

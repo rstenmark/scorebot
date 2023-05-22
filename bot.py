@@ -16,43 +16,52 @@ class MyClient(discord.Client):
             if len(s) != 1:
                 await msg.channel.send("```Usage: !credit```")
             else:
+                print(f"{msg.author.display_name} used !credit")
                 await msg.channel.send(get_high_score_by_guild(self, msg.guild.id))
         elif msg.content.startswith('!sync'):
             s = msg.content.split(" ")
             if len(s) != 1:
                 await msg.channel.send("```Usage: !sync```")
             else:
+                print(f"{msg.author.display_name} used !sync")
                 await self.sync_score(msg.guild.id)
 
     async def sync_score(self, guild_id: int):
         con, cur = open_db()
+        channels = set()
+
+        # Get all uncategorized channels in target guild
+        for channel in self.get_guild(guild_id).channels:
+            if isinstance(channel, discord.TextChannel):
+                channels.add(channel)
         # Get all channel categories in target guild
         for category in self.get_guild(guild_id).categories:
             # Get all text channels in category
             for channel in category.text_channels:
-                # Get last 100 messages in channel (async)
-                for message in [msg async for msg in channel.history()]:
-                    # Select messages matching this message id
-                    query = f"""SELECT score FROM messages WHERE message_id = {message.id} and guild_id = {guild_id}"""
-                    ret = cur.execute(query).fetchall()
-                    if not is_empty(ret):
-                        # One match, duplicate message (message_id is required to be unique)
+                channels.add(channel)
 
-                        # This is the score in local record
-                        recorded_sum = ret[0][0]
-
-                        # This is the score in remote record
-                        remote_sum = self.get_message_score(message)
-                        if recorded_sum != remote_sum:
-                            # Local record differs from remote record, update table
-                            query = f"""UPDATE messages SET score = {remote_sum} WHERE message_id = {message.id}"""
-                            cur.execute(query)
-
-                    else:
-                        # Zero matches, new message
-                        remote_sum = self.get_message_score(message)
-                        query = f"""INSERT INTO messages VALUES ({message.id}, {guild_id}, {message.author.id}, {remote_sum})"""
+        for channel in channels:
+            # Get last 100 messages in channel (async)
+            for message in [msg async for msg in channel.history()]:
+                print(message)
+                # Select messages matching this message id
+                query = f"""SELECT score FROM messages WHERE message_id = {message.id}"""
+                ret = cur.execute(query).fetchall()
+                if not is_empty(ret):
+                    # One match, duplicate message (message_id is required to be unique)
+                    # This is the score in local record
+                    recorded_sum = ret[0][0]
+                    # This is the score in remote record
+                    remote_sum = self.get_message_score(message)
+                    if recorded_sum != remote_sum:
+                        # Local record differs from remote record, update table
+                        query = f"""UPDATE messages SET score = {remote_sum} WHERE message_id = {message.id}"""
                         cur.execute(query)
+                else:
+                    # Zero matches, new message
+                    remote_sum = self.get_message_score(message)
+                    query = f"""INSERT INTO messages VALUES ({message.id}, {guild_id}, {message.author.id}, {remote_sum})"""
+                    cur.execute(query)
 
         # Commit changes at this point
         con.commit()
@@ -67,7 +76,7 @@ class MyClient(discord.Client):
                 sums[message[0]] = message[1]
 
         for author_id, score in sums.items():
-            cur.execute(f"""INSERT OR REPLACE INTO statistics VALUES ({author_id}, {guild_id}, {score})""")
+            update_score_by_id(author_id, guild_id, score)
 
         con.commit()
         con.close()
@@ -75,10 +84,13 @@ class MyClient(discord.Client):
     def get_message_score(self, message: discord.Message) -> int:
         sum = 0
         for reaction in message.reactions:
-            if reaction.emoji.name == EMOJI_CHILLING:
-                sum += reaction.count
-            elif reaction.emoji.name == EMOJI_MINUSCHILLING:
-                sum -= reaction.count
+            try:
+                if reaction.emoji.name == EMOJI_CHILLING:
+                    sum += reaction.count
+                elif reaction.emoji.name == EMOJI_MINUSCHILLING:
+                    sum -= reaction.count
+            except:
+                pass
         return sum
 
     async def _handle_reaction(self, payload: discord.RawReactionActionEvent):
