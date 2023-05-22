@@ -61,7 +61,6 @@ class MyClient(discord.Client):
         sums = dict()
         messages = cur.execute(f"""SELECT author_id, score FROM messages WHERE guild_id = {guild_id}""").fetchall()
         for message in messages:
-            print(message)
             try:
                 sums[message[0]] += message[1]
             except KeyError:
