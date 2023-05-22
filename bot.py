@@ -46,7 +46,6 @@ class MyClient(discord.Client):
                         if recorded_sum != remote_sum:
                             # Local record differs from remote record, update table
                             query = f"""UPDATE messages SET score = {remote_sum} WHERE message_id = {message.id}"""
-                            print(query)
                             cur.execute(query)
 
                     else:
@@ -54,6 +53,19 @@ class MyClient(discord.Client):
                         remote_sum = self.get_message_score(message)
                         query = f"""INSERT INTO messages VALUES ({message.id}, {message.author.id}, {remote_sum})"""
                         cur.execute(query)
+
+        # Get all recorded messages
+        sums = dict()
+        messages = cur.execute(f"""SELECT author_id, score FROM messages""").fetchall()
+        print(messages)
+        for message in messages:
+            try:
+                sums[message[0]] += message[1]
+            except KeyError:
+                sums[message[0]] = message[1]
+
+        for author_id, score in sums.items():
+            cur.execute(f"""INSERT INTO statistics VALUES ({author_id}, {score})""")
 
         con.commit()
         con.close()
