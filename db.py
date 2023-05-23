@@ -75,7 +75,7 @@ def increment_score_by_id(user_id: int, guild_id: int):
     update_score_by_id(
         user_id=user_id,
         guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) + 1 * SCORE_MODIFIER
+        score=get_score_by_id(user_id, guild_id) + 1
     )
 
 def decrement_score_by_id(user_id: int, guild_id: int):
@@ -83,7 +83,7 @@ def decrement_score_by_id(user_id: int, guild_id: int):
     update_score_by_id(
         user_id=user_id,
         guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) - 1 * SCORE_MODIFIER
+        score=get_score_by_id(user_id, guild_id) - 1
     )
 
 def get_high_score_by_guild(client: discord.client.Client, guild_id, limit=10):
@@ -99,8 +99,8 @@ def get_high_score_by_guild(client: discord.client.Client, guild_id, limit=10):
         for tuple in result:
             user = client.get_user(tuple[0])
             if not isinstance(user, type(None)):
-                ret += f"{user.display_name}: {tuple[1]} points\n"
+                ret += f"{user.display_name}: {tuple[1] * SCORE_MODIFIER} points\n"
             else:
-                ret += f"Unknown: {tuple[1]} points\n"
+                ret += f"Unknown: {tuple[1] * SCORE_MODIFIER} points\n"
     ret += "```"
     return ret

@@ -15,17 +15,18 @@ class MyClient(discord.Client):
         if msg.content.startswith('!credit'):
             s = msg.content.split(" ")
             if len(s) != 1:
-                await msg.channel.send("```Usage: !credit```")
+                await msg.channel.send("`Usage: !credit`")
             else:
                 print(f"{msg.author.display_name} used !credit")
                 await msg.channel.send(get_high_score_by_guild(self, msg.guild.id))
         elif msg.content.startswith('!sync'):
             s = msg.content.split(" ")
             if len(s) != 1:
-                await msg.channel.send("```Usage: !sync```")
+                await msg.channel.send("`Usage: !sync`")
             else:
                 print(f"{msg.author.display_name} used !sync")
                 await self.sync_score(msg.guild.id)
+                await msg.channel.send("`Scores resynced.`")
 
     async def sync_score(self, guild_id: int):
         con, cur = open_db()
@@ -50,9 +51,9 @@ class MyClient(discord.Client):
                 ret = cur.execute(query).fetchall()
                 if not is_empty(ret):
                     # One match, duplicate message (message_id is required to be unique)
-                    # This is the score in local record
+                    # This is the score in local record multiplied by the score modifier
                     recorded_sum = ret[0][0]
-                    # This is the score in remote record
+                    # This is the score in remote record multiplied by the score modifier
                     remote_sum = self.get_message_score(message)
                     if recorded_sum != remote_sum:
                         # Local record differs from remote record, update table
