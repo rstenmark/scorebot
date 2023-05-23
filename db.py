@@ -1,7 +1,9 @@
 import sqlite3, paths
 import discord.client
-from bot import SCORE_MODIFIER
 from typing import Any
+
+SCORE_MODIFIER = 50
+
 def _setup():
     con, cur = open_db()
     cur.execute(f"""CREATE TABLE statistics (user_id INTEGER PRIMARY KEY ASC, guild_id INTEGER, score INTEGER)""")
