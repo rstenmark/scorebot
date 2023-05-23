@@ -1,5 +1,6 @@
 import sqlite3, paths
 import discord.client
+from bot import SCORE_MODIFIER
 from typing import Any
 def _setup():
     con, cur = open_db()
@@ -45,7 +46,7 @@ def get_score_by_id(user_id: int, guild_id: int) -> int:
 def create_id(user_id: int, guild_id: int, score: int=0) -> Any:
     '''Creates a column with provided username and score (O by default).'''
     con, cur = open_db()
-    query = f"""INSERT INTO statistics(user_id, guild_id, score) values ({user_id}, {guild_id}, {score})"""
+    query = f"""INSERT OR IGNORE INTO statistics(user_id, guild_id, score) values ({user_id}, {guild_id}, {score})"""
     ret = cur.execute(query).fetchall()
     con.commit()
     con.close()
@@ -72,7 +73,7 @@ def increment_score_by_id(user_id: int, guild_id: int):
     update_score_by_id(
         user_id=user_id,
         guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) + 1
+        score=get_score_by_id(user_id, guild_id) + 1 * SCORE_MODIFIER
     )
 
 def decrement_score_by_id(user_id: int, guild_id: int):
@@ -80,7 +81,7 @@ def decrement_score_by_id(user_id: int, guild_id: int):
     update_score_by_id(
         user_id=user_id,
         guild_id=guild_id,
-        score=get_score_by_id(user_id, guild_id) - 1
+        score=get_score_by_id(user_id, guild_id) - 1 * SCORE_MODIFIER
     )
 
 def get_high_score_by_guild(client: discord.client.Client, guild_id, limit=10):

@@ -4,6 +4,7 @@ from typing import Any
 
 EMOJI_CHILLING = "chilling"
 EMOJI_MINUSCHILLING = "minusChilling"
+SCORE_MODIFIER = 50
 
 class MyClient(discord.Client):
     '''SocialCreditBot'''
